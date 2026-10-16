@@ -1,18 +1,16 @@
-import 'package:crud/screen/login_screen.dart';
-import 'package:crud/services/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import 'firebase_options.dart';
 import 'screen/home_screen.dart';
+import 'screen/login_screen.dart';
+import 'services/auth_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyCrud());
 }
 
@@ -24,7 +22,7 @@ class MyCrud extends StatelessWidget {
     const ouro = Color(0xFFD4A94A);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: "CRUD Flutter",
+      title: "The Dev's Quest",
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
@@ -49,13 +47,11 @@ class MyCrud extends StatelessWidget {
           ),
         ),
       ),
-      //home: HomeScreen(),
-      home: AuthGate(), // Agora chamamos
+      home: const AuthGate(),
     );
   }
 }
 
-// O vigia. Redesenha a tela quando a sessão muda
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
@@ -70,9 +66,9 @@ class AuthGate extends StatelessWidget {
           );
         }
         if (snapshot.hasData) {
-          return const HomeScreen(); // user != null - Aqui chamamos a home somente se estiver logado
+          return const HomeScreen();
         }
-        return const LoginPage(); // user == null - Aqui retorna para a página de login caso não tiver login
+        return const LoginPage(); // <--- Alterado de LoginScreen para LoginPage
       },
     );
   }
