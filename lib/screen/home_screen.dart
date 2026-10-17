@@ -19,11 +19,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final _nomeController = TextEditingController();
   final _forcaController = TextEditingController();
+  final _missaoController = TextEditingController();
 
   @override
   void dispose() {
     _nomeController.dispose();
     _forcaController.dispose();
+    _missaoController.dispose();
     super.dispose();
   }
 
@@ -76,102 +78,212 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _dialogConcluirMissao() {
+    _missaoController.clear();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('CONCLUIR MISSÃO'),
+          content: TextField(
+            controller: _missaoController,
+            decoration: const InputDecoration(
+              labelText: 'Título da Missão',
+              hintText: 'Ex: Derrotar o Dragão de Código',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('CANCELAR'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final titulo = _missaoController.text.trim();
+                if (titulo.isNotEmpty) {
+                  await _service.concluirMissao(titulo);
+                  if (mounted) Navigator.pop(context);
+                }
+              },
+              child: const Text('CONCLUIR'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const ouro = Color(0xFFD4A94A);
     final userEmail = FirebaseAuth.instance.currentUser?.email ?? 'Aventureiro';
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("THE DEV'S QUEST"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => _auth.sair(),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Text(
-              'Logado como: $userEmail',
-              style: const TextStyle(color: ouro),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text("THE DEV'S QUEST"),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: () => _auth.sair(),
             ),
+          ],
+          bottom: const TabBar(
+            indicatorColor: ouro,
+            labelColor: ouro,
+            unselectedLabelColor: Colors.grey,
+            tabs: [
+              Tab(icon: Icon(Icons.shield), text: "Personagens"),
+              Tab(icon: Icon(Icons.assignment_turned_in), text: "Missões"),
+            ],
           ),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: _service.listarPersonagens(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(
-                    child: Text('Nenhum herói cadastrado na sua jornada.'),
-                  );
-                }
-
-                final docs = snapshot.data!.docs;
-
-                return ListView.builder(
-                  itemCount: docs.length,
-                  itemBuilder: (context, index) {
-                    final doc = docs[index];
-                    final data = doc.data();
-                    final p = Personagem.fromMap(data, doc.id);
-
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: ouro,
-                          child: Text(
-                            '${p.forca}',
-                            style: const TextStyle(color: Colors.black),
-                          ),
-                        ),
-                        title: Text(p.nome),
-                        subtitle: Text('Vida: ${p.vida} HP'),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(
-                                Icons.flash_on,
-                                color: Colors.redAccent,
-                              ),
-                              onPressed: () =>
-                                  _service.tomarDano(p.id!, p.vida),
-                            ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.delete,
-                                color: Colors.grey,
-                              ),
-                              onPressed: () =>
-                                  _service.deletarPersonagem(p.id!),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
+        ),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Text(
+                'Logado como: $userEmail',
+                style: const TextStyle(color: ouro),
+              ),
             ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _dialogCriarHeroi,
-        backgroundColor: ouro,
-        child: const Icon(Icons.add, color: Colors.black),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  // --- ABA 1: PERSONAGENS ---
+                  StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: _service.listarPersonagens(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return const Center(
+                          child: Text('Nenhum herói cadastrado.'),
+                        );
+                      }
+
+                      final docs = snapshot.data!.docs;
+
+                      return ListView.builder(
+                        itemCount: docs.length,
+                        itemBuilder: (context, index) {
+                          final doc = docs[index];
+                          final data = doc.data();
+                          final p = Personagem.fromMap(data, doc.id);
+
+                          return Card(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: ouro,
+                                child: Text(
+                                  '${p.forca}',
+                                  style: const TextStyle(color: Colors.black),
+                                ),
+                              ),
+                              title: Text(p.nome),
+                              subtitle: Text('Vida: ${p.vida} HP'),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.flash_on,
+                                      color: Colors.redAccent,
+                                    ),
+                                    onPressed: () =>
+                                        _service.tomarDano(p.id!, p.vida),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete,
+                                      color: Colors.grey,
+                                    ),
+                                    onPressed: () =>
+                                        _service.deletarPersonagem(p.id!),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+
+                  // --- ABA 2: MISSÕES (PARTE 3 DO PDF) ---
+                  StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: _service.listarMissoes(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return const Center(
+                          child: Text('Nenhuma missão concluída ainda.'),
+                        );
+                      }
+
+                      final docs = snapshot.data!.docs;
+
+                      return ListView.builder(
+                        itemCount: docs.length,
+                        itemBuilder: (context, index) {
+                          final doc = docs[index];
+                          final data = doc.data();
+                          final titulo = data['titulo'] ?? 'Sem título';
+
+                          return Card(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            child: ListTile(
+                              leading: const Icon(
+                                Icons.check_circle,
+                                color: Colors.greenAccent,
+                              ),
+                              title: Text(titulo),
+                              subtitle: const Text('Missão Concluída'),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        floatingActionButton: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FloatingActionButton.small(
+              heroTag: "btn_missao",
+              onPressed: _dialogConcluirMissao,
+              backgroundColor: const Color(0xFF8B1E1E),
+              tooltip: "Concluir Missão",
+              child: const Icon(Icons.add_task, color: Colors.white),
+            ),
+            const SizedBox(height: 8),
+            FloatingActionButton(
+              heroTag: "btn_heroi",
+              onPressed: _dialogCriarHeroi,
+              backgroundColor: ouro,
+              tooltip: "Criar Herói",
+              child: const Icon(Icons.person_add, color: Colors.black),
+            ),
+          ],
+        ),
       ),
     );
   }
